@@ -13,44 +13,63 @@ public class ArchivoCSV {
 
     public List<Solicitud> cargarSolicitudes() {
         List<Solicitud> solicitudes = new ArrayList<>();
-        List<String> lineasRestantes = new ArrayList<>();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(rutaArchivo))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(rutaArchivo), "UTF-8"))) {
             String linea;
+            boolean esPrimeraLinea = true;
 
-            // Lee cada línea del archivo CSV
             while ((linea = br.readLine()) != null) {
-                // Divide la línea por comas (si el separador es diferente, ajústalo aquí)
-                String[] datos = linea.split(",");
+                // Ignorar la cabecera
+                if (esPrimeraLinea) {
+                    esPrimeraLinea = false;
+                    continue;
+                }
 
-                // Verifica que la línea tenga el número correcto de columnas
-                if (datos.length == 4) {
-                    // Crea una nueva solicitud y agrégala a la lista
-                    Solicitud solicitud = new Solicitud(datos[0], datos[1], datos[2], datos[3]);
-                    solicitudes.add(solicitud);
+                // Limpieza extra de la línea (eliminar posibles espacios)
+                linea = linea.trim();
+
+                // Verificación del formato
+                String[] datos = linea.split(",");
+                if (datos.length == 6) {
+                    try {
+                        String tipoDocumento = datos[0].trim();
+                        String documento = datos[1].trim();
+                        String nombreCompleto = datos[2].trim();
+                        String caracterizacion = datos[3].trim();
+                        int edad = Integer.parseInt(datos[4].trim());
+
+                        // Asegúrate de que 'Si' se interprete correctamente
+                        boolean declaracionRenta = datos[5].trim().equalsIgnoreCase("Si");
+
+                        Solicitud solicitud = new Solicitud(tipoDocumento, documento, nombreCompleto, caracterizacion, edad, declaracionRenta);
+                        solicitudes.add(solicitud);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Error en formato numérico en la línea: " + linea);
+                    } catch (Exception e) {
+                        System.err.println("Error procesando la línea: " + linea + ", " + e.getMessage());
+                    }
                 } else {
-                    // Si la línea no es válida, la agregamos a la lista de líneas restantes
-                    lineasRestantes.add(linea);
+                    System.err.println("Línea con formato incorrecto: " + linea);
                 }
             }
+
         } catch (IOException e) {
             System.err.println("Error al leer el archivo: " + e.getMessage());
         }
 
-        // Reescribe el archivo sin las líneas eliminadas
-        reescribirArchivo(lineasRestantes);
+        // Vaciar el archivo después de leer los datos
+        vaciarArchivo();
 
         return solicitudes;
     }
 
-    private void reescribirArchivo(List<String> lineasRestantes) {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(rutaArchivo))) {
-            for (String linea : lineasRestantes) {
-                bw.write(linea);
-                bw.newLine();
-            }
+
+    private void vaciarArchivo() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(rutaArchivo))) {
+            // Se abre el archivo en modo de escritura y no se escribe nada, esto lo vacía
+            writer.write("");  // Vacía el archivo
         } catch (IOException e) {
-            System.err.println("Error al escribir en el archivo: " + e.getMessage());
+            System.err.println("Error al vaciar el archivo: " + e.getMessage());
         }
     }
 }
